@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KYA Prompt Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        kya: { neon: '#00FF66', dark: '#0a0a0a', darker: '#050505', card: '#141414', border: '#2a2a2a' }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'slide-left': 'slideLeft 0.3s ease-out',
+                        'slide-right': 'slideRight 0.3s ease-out'
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideUp: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+                        slideLeft: { '0%': { transform: 'translateX(20px)', opacity: '0' }, '100%': { transform: 'translateX(0)', opacity: '1' } },
+                        slideRight: { '0%': { transform: 'translateX(-20px)', opacity: '0' }, '100%': { transform: 'translateX(0)', opacity: '1' } }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #050505; color: #ffffff; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00FF66; }
+        
+        select, input, textarea {
+            appearance: none; background-color: #141414; border: 1px solid #2a2a2a; color: white; transition: all 0.2s; width: 100%; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem;
+        }
+        select:focus, input:focus, textarea:focus { outline: none; border-color: #00FF66; box-shadow: 0 0 0 1px rgba(0, 255, 102, 0.2); }
+        
+        .glass-header { background: rgba(10, 10, 10, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(42, 42, 42, 0.5); }
+        .tab-active { color: #00FF66 !important; border-bottom: 2px solid #00FF66; }
+        .section-content, .wizard-step { display: none; }
+        .section-content.active { display: block; animation: fadeIn 0.3s ease-out; }
+        .wizard-step.active { display: block; animation: slideLeft 0.3s ease-out; }
+
+        #toast {
+            visibility: hidden; min-width: 250px; background-color: #00FF66; color: #050505; text-align: center; border-radius: 8px; padding: 12px; position: fixed; z-index: 100; left: 50%; bottom: 30px; transform: translateX(-50%); font-weight: 600; box-shadow: 0 4px 15px rgba(0, 255, 102, 0.3); transition: opacity 0.3s, bottom 0.3s; opacity: 0;
+        }
+        #toast.show { visibility: visible; bottom: 40px; opacity: 1; }
+    </style>
+</head>
+<body class="antialiased font-sans selection:bg-kya-neon selection:text-black pb-24">
+
+    <header class="glass-header sticky top-0 z-40 w-full">
+        <div class="px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="UI.switchTab('image')">
+                <i class="ph-fill ph-cpu text-kya-neon text-2xl"></i>
+                <h1 class="text-xl font-bold tracking-tight">KYA <span class="text-kya-neon">Builder</span> <span class="text-[10px] text-gray-500 font-normal">v1.0</span></h1>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="UI.switchTab('search')" class="p-2 rounded-lg bg-kya-card border border-kya-border hover:border-kya-neon transition-colors"><i class="ph ph-magnifying-glass text-xl"></i></button>
+                <button onclick="UI.switchTab('history')" class="p-2 rounded-lg bg-kya-card border border-kya-border hover:border-kya-neon transition-colors"><i class="ph ph-clock-counter-clockwise text-xl"></i></button>
+                <button onclick="UI.switchTab('favorites')" class="p-2 rounded-lg bg-kya-card border border-kya-border text-yellow-400 hover:border-yellow-400 transition-colors"><i class="ph-fill ph-star text-xl"></i></button>
+                <button onclick="UI.switchTab('settings')" class="p-2 rounded-lg bg-kya-card border border-kya-border hover:border-kya-neon transition-colors"><i class="ph ph-gear text-xl"></i></button>
+            </div>
+        </div>
+        
+        <div class="overflow-x-auto no-scrollbar border-b border-kya-border">
+            <div class="flex px-2 w-max" id="main-nav">
+                <button onclick="UI.switchTab('image')" data-tab="image" class="tab-btn tab-active px-4 py-3 text-sm font-medium transition-colors flex items-center gap-2"><i class="ph ph-image"></i> Gambar</button>
+                <button onclick="UI.switchTab('video')" data-tab="video" class="tab-btn px-4 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2"><i class="ph ph-video-camera"></i> Video</button>
+                <button onclick="UI.switchTab('music')" data-tab="music" class="tab-btn px-4 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2"><i class="ph ph-music-notes"></i> Musik</button>
+                <button onclick="UI.switchTab('code')" data-tab="code" class="tab-btn px-4 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2"><i class="ph ph-code"></i> Coding</button>
+                <button onclick="UI.switchTab('chat')" data-tab="chat" class="tab-btn px-4 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2"><i class="ph ph-chats"></i> Chat AI</button>
+                <button onclick="UI.switchTab('library')" data-tab="library" class="tab-btn px-4 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2 border-l border-kya-border ml-2 pl-4"><i class="ph ph-books"></i> Library</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="p-4 max-w-2xl mx-auto">
+        
+        <section id="sec-image" class="section-content active">
+            <div class="mb-4 flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-kya-neon flex items-center gap-2"><i class="ph-fill ph-magic-wand"></i> Image Prompt Wizard</h2>
+                <span class="text-xs text-gray-400 bg-kya-card px-2 py-1 rounded border border-kya-border" id="wizard-counter">Step 1 of 4</span>
+            </div>
+
+            <form id="imageForm" class="space-y-4">
+                <!-- Wizard Step 1: Context -->
+                <div id="w-step-1" class="wizard-step active bg-kya-card p-4 rounded-xl border border-kya-border space-y-4">
+                    <h3 class="text-sm font-medium text-kya-neon mb-2 border-b border-kya-border pb-2">1. Konteks & Bisnis</h3>
+                    <div><label class="block text-xs mb-1 text-gray-400">Jenis Bisnis / Industri</label>
+                        <input type="text" id="img_business" placeholder="Contoh: Kedai kopi artisan, Fashion brand..."></div>
+                    <div><label class="block text-xs mb-1 text-gray-400">Tujuan Gambar</label>
+                        <select id="img_goal">
+                            <option value="promotional advertisement">Iklan Promosi</option>
+                            <option value="social media post">Postingan Sosmed</option>
+                            <option value="product catalog">Katalog Produk</option>
+                            <option value="brand awareness">Brand Awareness</option>
+                        </select>
+                    </div>
+                    <div><label class="block text-xs mb-1 text-gray-400">Target Pelanggan</label>
+                        <input type="text" id="img_target" placeholder="Contoh: Anak muda Gen Z, Profesional kantoran..."></div>
+                    <button type="button" onclick="UI.nextWizard(2)" class="w-full py-3 rounded-xl bg-kya-border text-white hover:bg-gray-700 transition">Selanjutnya <i class="ph ph-arrow-right inline-block align-middle"></i></button>
+                </div>
+
+                <!-- Wizard Step 2: Subject -->
+                <div id="w-step-2" class="wizard-step bg-kya-card p-4 rounded-xl border border-kya-border space-y-4">
+                    <h3 class="text-sm font-medium text-kya-neon mb-2 border-b border-kya-border pb-2">2. Subjek Utama</h3>
+                    <div><label class="block text-xs mb-1 text-gray-400">Nama/Jenis Produk</label>
+                        <input type="text" id="img_product" placeholder="Contoh: Sepatu sneakers, Kopi Latte..."></div>
+                    <div><label class="block text-xs mb-1 text-gray-400">Deskripsi Detail Subjek (Wajib)</label>
+                        <textarea id="img_subject" rows="3" placeholder="Gambarkan aksi, posisi, atau detail produk... (misal: diletakkan di atas batu alam dengan percikan air)"></textarea></div>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="UI.prevWizard(1)" class="w-1/3 py-3 rounded-xl bg-kya-border text-white hover:bg-gray-700 transition">Kembali</button>
+                        <button type="button" onclick="UI.nextWizard(3)" class="w-2/3 py-3 rounded-xl bg-gray-700 text-white hover:bg-gray-600 transition">Selanjutnya</button>
+                    </div>
+                </div>
+
+                <!-- Wizard Step 3: Visuals -->
+                <div id="w-step-3" class="wizard-step bg-kya-card p-4 rounded-xl border border-kya-border space-y-4">
+                    <h3 class="text-sm font-medium text-kya-neon mb-2 border-b border-kya-border pb-2">3. Visual & Gaya</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="col-span-2"><label class="block text-xs mb-1 text-gray-400">Style Seni</label>
+                            <select id="img_style">
+                                <option value="photorealistic, 8k, highly detailed photography">Fotorealistik</option>
+                                <option value="cinematic photography, cinematic lighting">Sinematik</option>
+                                <option value="minimalist, clean background, modern">Minimalis</option>
+                                <option value="3D render, Unreal Engine 5, Octane Render">3D Render</option>
+                                <option value="flat illustration, vector art">Ilustrasi Vektor</option>
+                            </select>
+                        </div>
+                        <div><label class="block text-xs mb-1 text-gray-400">Pencahayaan</label>
+                            <select id="img_lighting">
+                                <option value="natural sunlight, golden hour">Golden Hour</option>
+                                <option value="studio lighting, softbox">Lampu Studio</option>
+                                <option value="dramatic moody lighting, high contrast">Dramatis</option>
+                                <option value="neon lights, cyberpunk glow">Neon Glow</option>
+                            </select>
+                        </div>
+                        <div><label class="block text-xs mb-1 text-gray-400">Warna Dominan</label>
+                            <input type="text" id="img_color" placeholder="Contoh: Earth tones, Pastel..."></div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="UI.prevWizard(2)" class="w-1/3 py-3 rounded-xl bg-kya-border text-white hover:bg-gray-700 transition">Kembali</button>
+                        <button type="button" onclick="UI.nextWizard(4)" class="w-2/3 py-3 rounded-xl bg-gray-700 text-white hover:bg-gray-600 transition">Selanjutnya</button>
+                    </div>
+                </div>
+
+                <!-- Wizard Step 4: Tech & Generate -->
+                <div id="w-step-4" class="wizard-step bg-kya-card p-4 rounded-xl border border-kya-border space-y-4">
+                    <h3 class="text-sm font-medium text-kya-neon mb-2 border-b border-kya-border pb-2">4. Teknis & Mesin AI</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="block text-xs mb-1 text-gray-400">Target AI</label>
+                            <select id="img_ai" class="border-kya-neon text-kya-neon">
+                                <option value="Midjourney">Midjourney (v6)</option>
+                                <option value="FLUX">FLUX.1</option>
+                                <option value="ChatGPT">ChatGPT (DALL-E 3)</option>
+                                <option value="Gemini">Gemini (Imagen 3)</option>
+                                <option value="Leonardo AI">Leonardo AI</option>
+                                <option value="Ideogram">Ideogram</option>
+                                <option value="Stable Diffusion">Stable Diffusion XL</option>
+                            </select>
+                        </div>
+                        <div><label class="block text-xs mb-1 text-gray-400">Rasio Gambar</label>
+                            <select id="img_ratio">
+                                <option value="1:1">1:1 (Square)</option>
+                                <option value="16:9">16:9 (Lanskap)</option>
+                                <option value="9:16">9:16 (Tiktok/Reels)</option>
+                                <option value="4:5">4:5 (IG Portrait)</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2"><label class="block text-xs mb-1 text-gray-400">Kamera/Lensa</label>
+                            <select id="img_camera">
+                                <option value="shot on 35mm lens, shallow depth of field, bokeh">Lensa 35mm (Bokeh)</option>
+                                <option value="shot on 85mm lens, portrait photography">Lensa 85mm (Potret)</option>
+                                <option value="macro photography, extreme close up">Makro (Jarak Dekat)</option>
+                                <option value="wide angle shot, showing environment">Wide Angle (Lingkungan)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 pt-2">
+                        <button type="button" onclick="UI.prevWizard(3)" class="w-1/3 py-3 rounded-xl bg-kya-border text-white hover:bg-gray-700 transition">Kembali</button>
+                        <button type="button" onclick="Engine.generate('image')" class="w-2/3 py-3 rounded-xl bg-kya-neon text-black font-bold hover:bg-green-400 active:scale-[0.98] transition-all shadow-[0_0_15px_rgba(0,255,102,0.3)]">
+                            <i class="ph-fill ph-magic-wand"></i> Generate Prompt
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <section id="sec-video" class="section-content">
+            <div class="mb-4 flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-white flex items-center gap-2"><i class="ph-fill ph-video-camera"></i> Video Prompt Generator</h2>
+            </div>
+            <form id="videoForm" class="space-y-4 bg-kya-card p-4 rounded-xl border border-kya-border">
+                <div><label class="block text-xs mb-1 text-gray-400">Target AI Video</label>
+                    <select id="vid_ai"><option value="Runway Gen-3">Runway Gen-3</option><option value="Kling AI">Kling AI</option><option value="Luma Dream Machine">Luma Dream Machine</option><option value="Veo">Google Veo</option><option value="Pika Labs">Pika Labs</option><option value="Hailuo">Hailuo Minimax</option></select>
+                </div>
+                <div><label class="block text-xs mb-1 text-gray-400">Subjek Utama & Aksi (Wajib)</label>
+                    <textarea id="vid_subject" rows="3" placeholder="Contoh: Seorang barista menuangkan latte art berbentuk angsa..."></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-xs mb-1 text-gray-400">Gerakan Kamera</label>
+                        <select id="vid_camera"><option value="Slow pan right">Pan Right</option><option value="Slow zoom in">Zoom In</option><option value="Drone flying over">Drone Shot</option><option value="Static cinematic shot">Static Cinematic</option><option value="FPV flying through">FPV Shot</option></select>
+                    </div>
+                    <div><label class="block text-xs mb-1 text-gray-400">Style & Mood</label>
+                        <select id="vid_style"><option value="Cinematic, highly detailed, realistic">Cinematic Realism</option><option value="Anime style, Studio Ghibli">Anime 2D</option><option value="3D Pixar style animation">3D Animation</option><option value="Vintage 35mm film look">Vintage Film</option></select>
+                    </div>
+                </div>
+                <button type="button" onclick="Engine.generate('video')" class="w-full py-3.5 rounded-xl bg-white text-black font-bold text-lg hover:bg-gray-200 active:scale-[0.98] transition-all">Generate Video Prompt</button>
+            </form>
+        </section>
+
+        <section id="sec-music" class="section-content">
+            <h2 class="text-lg font-semibold text-white flex items-center gap-2 mb-4"><i class="ph-fill ph-music-notes"></i> Music Prompt Generator</h2>
+            <form id="musicForm" class="space-y-4 bg-kya-card p-4 rounded-xl border border-kya-border">
+                <div><label class="block text-xs mb-1 text-gray-400">Target AI Musik</label>
+                    <select id="mus_ai"><option value="Suno AI">Suno AI (v3.5)</option><option value="Udio">Udio</option></select>
+                </div>
+                <div><label class="block text-xs mb-1 text-gray-400">Genre Musik</label>
+                    <input type="text" id="mus_genre" placeholder="Contoh: Synthwave, Acoustic Pop, Lo-fi Hip Hop...">
+                </div>
+                <div><label class="block text-xs mb-1 text-gray-400">Tema Lirik / Mood (Wajib)</label>
+                    <textarea id="mus_theme" rows="3" placeholder="Contoh: Lagu tentang semangat pagi, minum kopi sebelum kerja, upbeat dan ceria..."></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-xs mb-1 text-gray-400">Tempo</label>
+                        <select id="mus_tempo"><option value="Fast upbeat tempo">Upbeat (Cepat)</option><option value="Mid-tempo groove">Mid-tempo (Sedang)</option><option value="Slow atmospheric tempo">Slow (Lambat)</option></select>
+                    </div>
+                    <div><label class="block text-xs mb-1 text-gray-400">Vokal</label>
+                        <select id="mus_vocal"><option value="Female melodic vocals">Female Vocal</option><option value="Male raspy vocals">Male Vocal</option><option value="Instrumental only">Instrumental (Tanpa Vokal)</option></select>
+                    </div>
+                </div>
+                <button type="button" onclick="Engine.generate('music')" class="w-full py-3.5 rounded-xl bg-purple-500 text-white font-bold text-lg hover:bg-purple-400 active:scale-[0.98] transition-all">Generate Music Prompt</button>
+            </form>
+        </section>
+
+        <section id="sec-code" class="section-content">
+            <h2 class="text-lg font-semibold text-white flex items-center gap-2 mb-4"><i class="ph-fill ph-code"></i> Code Prompt Generator</h2>
+            <form id="codeForm" class="space-y-4 bg-kya-card p-4 rounded-xl border border-kya-border">
+                <div><label class="block text-xs mb-1 text-gray-400">Target AI / IDE</label>
+                    <select id="cod_ai"><option value="Claude 3.5 Sonnet">Claude 3.5 Sonnet</option><option value="Cursor IDE">Cursor</option><option value="GitHub Copilot">GitHub Copilot</option><option value="ChatGPT 4o">ChatGPT 4o</option><option value="Gemini 1.5 Pro">Gemini 1.5 Pro</option></select>
+                </div>
+                <div><label class="block text-xs mb-1 text-gray-400">Tech Stack / Bahasa</label>
+                    <input type="text" id="cod_stack" placeholder="Contoh: React, Tailwind, Node.js...">
+                </div>
+                <div><label class="block text-xs mb-1 text-gray-400">Deskripsi Tugas (Wajib)</label>
+                    <textarea id="cod_task" rows="3" placeholder="Contoh: Buatkan komponen Navbar responsive dengan dropdown menu untuk mobile..."></textarea>
+                </div>
+                <button type="button" onclick="Engine.generate('code')" class="w-full py-3.5 rounded-xl bg-blue-500 text-white font-bold text-lg hover:bg-blue-400 active:scale-[0.98] transition-all">Generate Code Prompt</button>
+            </form>
+        </section>
+
+        <section id="sec-chat" class="section-content">
+            <h2 class="text-lg font-semibold text-white flex items-center gap-2 mb-4"><i class="ph-fill ph-chats"></i> Chat AI Prompt (RTFC Framework)</h2>
+            <form id="chatForm" class="space-y-4 bg-kya-card p-4 rounded-xl border border-kya-border">
+                <div><label class="block text-xs mb-1 text-gray-400">Target AI</label>
+                    <select id="chat_ai"><option value="ChatGPT">ChatGPT</option><option value="Claude">Claude</option><option value="Gemini">Gemini</option></select>
+                </div>
+                <div><label class="block text-xs mb-1 text-gray-400">Role (Peran AI)</label>
+                    <input type="text" id="chat_role" placeholder="Contoh: Copywriter profesional, Konsultan SEO...">
+                </div>
+                <div><label class="block text-xs mb-1 text-gray-400">Task (Tugas Utama Wajib)</label>
+                    <textarea id="chat_task" rows="2" placeholder="Contoh: Buatkan artikel blog 500 kata tentang manfaat kopi..."></textarea>
+                </div>
+                <div><label class="block text-xs mb-1 text-gray-400">Format & Constraint (Aturan)</label>
+                    <textarea id="chat_format" rows="2" placeholder="Contoh: Gunakan bullet points, bahasa santai, jangan gunakan jargon teknis..."></textarea>
+                </div>
+                <button type="button" onclick="Engine.generate('chat')" class="w-full py-3.5 rounded-xl bg-teal-500 text-white font-bold text-lg hover:bg-teal-400 active:scale-[0.98] transition-all">Generate Text Prompt</button>
+            </form>
+        </section>
+
+        <section id="sec-library" class="section-content">
+            <h2 class="text-lg font-semibold text-white flex items-center gap-2 mb-4"><i class="ph-fill ph-books"></i> Prompt Library</h2>
+            <div class="grid grid-cols-2 gap-3" id="library-grid">
+                <!-- Injected via JS -->
+            </div>
+        </section>
+
+        <section id="sec-search" class="section-content">
+            <h2 class="text-lg font-semibold text-white flex items-center gap-2 mb-4"><i class="ph-fill ph-magnifying-glass"></i> Cari Prompt</h2>
+            <div class="mb-4">
+                <input type="text" id="searchInput" onkeyup="UI.searchPrompts()" placeholder="Ketik kata kunci atau AI target..." class="w-full bg-kya-darker border border-kya-neon pl-10">
+                <i class="ph ph-magnifying-glass absolute top-5 left-3 text-gray-400 mt-[72px] ml-[16px]"></i>
+            </div>
+            <div id="search-results" class="space-y-3">
+                <p class="text-gray-500 text-sm text-center py-5">Hasil pencarian akan muncul di sini.</p>
+            </div>
+        </section>
+
+        <section id="sec-history" class="section-content">
+            <div class="mb-4 flex justify-between items-center">
+                <h2 class="text-lg font-semibold flex items-center gap-2"><i class="ph-fill ph-clock text-gray-400"></i> Riwayat</h2>
+                <button onclick="Storage.clearHistory()" class="text-xs text-red-400 hover:text-red-300">Hapus</button>
+            </div>
+            <div id="history-container" class="space-y-3"></div>
+        </section>
+
+        <section id="sec-favorites" class="section-content">
+            <div class="mb-4"><h2 class="text-lg font-semibold flex items-center gap-2 text-yellow-400"><i class="ph-fill ph-star"></i> Tersimpan</h2></div>
+            <div id="favorites-container" class="space-y-3"></div>
+        </section>
+
+        <section id="sec-settings" class="section-content">
+            <h2 class="text-lg font-semibold text-white flex items-center gap-2 mb-4"><i class="ph-fill ph-gear"></i> Pengaturan (Offline)</h2>
+            <div class="bg-kya-card rounded-xl border border-kya-border overflow-hidden">
+                <div class="p-4 border-b border-kya-border">
+                    <h3 class="text-sm font-medium text-gray-400 mb-3">Manajemen Data</h3>
+                    <div class="space-y-2">
+                        <button onclick="Storage.backupJSON()" class="w-full text-left py-2 px-3 rounded-lg hover:bg-gray-800 flex justify-between items-center transition"><span>Backup Data (JSON)</span> <i class="ph ph-download-simple"></i></button>
+                        <div class="relative">
+                            <input type="file" id="restoreFile" accept=".json" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="Storage.restoreJSON(event)">
+                            <div class="w-full text-left py-2 px-3 rounded-lg hover:bg-gray-800 flex justify-between items-center transition"><span>Restore Data (JSON)</span> <i class="ph ph-upload-simple"></i></div>
+                        </div>
+                        <div class="relative mt-4 border-t border-kya-border pt-2">
+                            <input type="file" id="importFile" accept=".txt,.md" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="Storage.importTXT(event)">
+                            <div class="w-full text-left py-2 px-3 rounded-lg hover:bg-gray-800 flex justify-between items-center text-kya-neon transition"><span>Import Prompt (TXT/MD)</span> <i class="ph ph-file-arrow-up"></i></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <h3 class="text-sm font-medium text-red-400 mb-3">Zona Bahaya</h3>
+                    <button onclick="Storage.clearHistory()" class="w-full text-left py-2 px-3 rounded-lg hover:bg-red-900/30 text-red-400 transition mb-2">Hapus Semua History</button>
+                    <button onclick="Storage.clearFavorites()" class="w-full text-left py-2 px-3 rounded-lg hover:bg-red-900/30 text-red-400 transition">Hapus Semua Favorites</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- RESULT MODAL -->
+    <div id="resultModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col justify-end hidden">
+        <div class="bg-kya-dark border-t border-kya-neon rounded-t-3xl p-5 h-[85vh] flex flex-col animate-slide-up shadow-[0_-10px_40px_rgba(0,255,102,0.15)] relative">
+            <button onclick="UI.closeModal()" class="absolute top-4 right-4 p-2 rounded-full bg-kya-card text-gray-400 hover:text-white"><i class="ph ph-x text-xl"></i></button>
+            <h3 class="text-xl font-bold mb-1">Hasil Prompt <span id="res_ai_tag" class="text-xs bg-kya-card border border-kya-border px-2 py-1 rounded text-kya-neon ml-2 align-middle"></span></h3>
+            <p class="text-sm text-gray-400 mb-4">Salin atau ekspor prompt di bawah ini.</p>
+            
+            <div class="flex-1 relative mb-4">
+                <textarea id="generatedPrompt" readonly class="w-full h-full p-4 rounded-xl text-sm leading-relaxed bg-black border border-kya-border font-mono resize-none"></textarea>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 pb-4">
+                <button onclick="Storage.saveFavorite()" id="btnFav" class="py-3 rounded-xl bg-kya-card border border-kya-border text-white text-xs font-medium flex flex-col items-center justify-center gap-1 hover:border-yellow-400 transition-colors">
+                    <i class="ph ph-star text-lg"></i> Simpan
+                </button>
+                <button onclick="Utils.exportTXT()" class="py-3 rounded-xl bg-kya-card border border-kya-border text-white text-xs font-medium flex flex-col items-center justify-center gap-1 hover:border-blue-400 transition-colors">
+                    <i class="ph ph-export text-lg"></i> Export
+                </button>
+                <button onclick="Utils.copyToClipboard()" class="py-3 rounded-xl bg-kya-neon text-black text-xs font-bold flex flex-col items-center justify-center gap-1 shadow-[0_0_15px_rgba(0,255,102,0.3)] hover:bg-green-400 active:scale-95 transition-all">
+                    <i class="ph-fill ph-copy text-lg"></i> Salin
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast">Notifikasi</div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        // KYA Application Namespace
+        const KYA = {
+            currentPrompt: "",
+            currentAiType: "",
+            currentCategory: "",
+            library: [
+                { id: 'l1', icon: 'ph-behance-logo', title: 'Logo', desc: 'Minimalist, mascot, abstract', type: 'image' },
+                { id: 'l2', icon: 'ph-image-square', title: 'Banner', desc: 'Youtube, Web header', type: 'image' },
+                { id: 'l3', icon: 'ph-instagram-logo', title: 'Feed IG', desc: 'Product promo, square', type: 'image' },
+                { id: 'l4', icon: 'ph-package', title: 'Packaging', desc: 'Box design, label', type: 'image' },
+                { id: 'l5', icon: 'ph-storefront', title: 'Warung', desc: 'Menu makanan, banner', type: 'image' },
+                { id: 'l6', icon: 'ph-armchair', title: 'Interior', desc: 'Room design, furniture', type: 'image' },
+                { id: 'l7', icon: 'ph-t-shirt', title: 'Fashion', desc: 'Clothing mockup, models', type: 'image' },
+                { id: 'l8', icon: 'ph-coffee', title: 'F&B', desc: 'Food & Beverage photography', type: 'image' }
+            ]
+        };
+
+        // --- MODULE: Utils ---
+        const Utils = {
+            showToast: (msg, isError = false) => {
+                const toast = document.getElementById('toast');
+                toast.innerText = msg;
+                toast.style.backgroundColor = isError ? '#ff4444' : '#00FF66';
+                toast.style.color = isError ? 'white' : '#050505';
+                toast.className = 'show';
+                setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+            },
+            copyToClipboard: () => {
+                const textarea = document.getElementById('generatedPrompt');
+                textarea.select();
+                textarea.setSelectionRange(0, 99999);
+                try {
+                    document.execCommand('copy');
+                    Utils.showToast("Prompt berhasil disalin! 🚀");
+                } catch (err) {
+                    navigator.clipboard.writeText(textarea.value)
+                        .then(() => Utils.showToast("Prompt berhasil disalin! 🚀"))
+                        .catch(() => Utils.showToast("Gagal menyalin text.", true));
+                }
+            },
+            exportTXT: () => {
+                if(!KYA.currentPrompt) return;
+                const blob = new Blob([KYA.currentPrompt], { type: "text/plain;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `KYA_Prompt_${new Date().getTime()}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                Utils.showToast("Prompt diexport sebagai TXT");
+            }
+        };
+
+        // --- MODULE: Storage ---
+        const Storage = {
+            get: (key) => JSON.parse(localStorage.getItem(key)) || [],
+            set: (key, data) => localStorage.setItem(key, JSON.stringify(data)),
+            saveHistory: (prompt, category, aiTarget) => {
+                let hist = Storage.get('kya_history');
+                hist.unshift({ id: Date.now().toString(), prompt, category, ai: aiTarget, date: new Date().toLocaleString('id-ID', {day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit'}) });
+                if (hist.length > 50) hist.pop();
+                Storage.set('kya_history', hist);
+                UI.renderHistory();
+            },
+            saveFavorite: () => {
+                let favs = Storage.get('kya_favorites');
+                if (favs.find(f => f.prompt === KYA.currentPrompt)) {
+                    Utils.showToast("Sudah ada di Favorit");
+                    return;
+                }
+                favs.unshift({ id: Date.now().toString(), prompt: KYA.currentPrompt, category: KYA.currentCategory, ai: KYA.currentAiType, date: new Date().toLocaleString('id-ID', {day: 'numeric', month: 'short'}) });
+                Storage.set('kya_favorites', favs);
+                
+                const btnFav = document.getElementById('btnFav');
+                btnFav.innerHTML = '<i class="ph-fill ph-star text-lg text-yellow-400"></i> Tersimpan';
+                btnFav.classList.add('border-yellow-400');
+                UI.renderFavorites();
+                Utils.showToast("Disimpan ke Favorit! ⭐");
+            },
+            removeFavorite: (id) => {
+                let favs = Storage.get('kya_favorites').filter(f => f.id !== id);
+                Storage.set('kya_favorites', favs);
+                UI.renderFavorites();
+                Utils.showToast("Dihapus dari favorit");
+            },
+            clearHistory: () => { if(confirm("Hapus semua riwayat?")) { localStorage.removeItem('kya_history'); UI.renderHistory(); Utils.showToast("Riwayat dibersihkan"); } },
+            clearFavorites: () => { if(confirm("Hapus semua favorit?")) { localStorage.removeItem('kya_favorites'); UI.renderFavorites(); Utils.showToast("Favorit dibersihkan"); } },
+            backupJSON: () => {
+                const data = { history: Storage.get('kya_history'), favorites: Storage.get('kya_favorites') };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = `KYA_Backup_${new Date().getTime()}.json`;
+                a.click();
+                Utils.showToast("Backup berhasil diunduh");
+            },
+            restoreJSON: (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if(data.history) Storage.set('kya_history', data.history);
+                        if(data.favorites) Storage.set('kya_favorites', data.favorites);
+                        UI.renderHistory(); UI.renderFavorites();
+                        Utils.showToast("Data berhasil dipulihkan!");
+                    } catch (err) { Utils.showToast("File JSON tidak valid!", true); }
+                };
+                reader.readAsText(file);
+                e.target.value = ''; // reset
+            },
+            importTXT: (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const text = event.target.result;
+                    KYA.currentPrompt = text;
+                    KYA.currentAiType = "Imported";
+                    KYA.currentCategory = "Text";
+                    UI.openModal(text, "Imported");
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            }
+        };
+
+        // --- MODULE: Prompt Engine ---
+        const Engine = {
+            generate: (type) => {
+                let finalPrompt = "";
+                let ai = "";
+                
+                if (type === 'image') {
+                    const subject = document.getElementById('img_subject').value.trim();
+                    if (!subject) return Utils.showToast("Harap isi deskripsi subjek utama!", true);
+                    
+                    const business = document.getElementById('img_business').value.trim();
+                    const goal = document.getElementById('img_goal').value;
+                    const target = document.getElementById('img_target').value.trim();
+                    const product = document.getElementById('img_product').value.trim();
+                    const style = document.getElementById('img_style').value;
+                    const color = document.getElementById('img_color').value.trim();
+                    const lighting = document.getElementById('img_lighting').value;
+                    const camera = document.getElementById('img_camera').value;
+                    const ratio = document.getElementById('img_ratio').value;
+                    ai = document.getElementById('img_ai').value;
+
+                    // Architecture mapping based on AI character
+                    if (ai === 'Midjourney' || ai === 'Stable Diffusion') {
+                        // Keyword based, highly structured
+                        let parts = [];
+                        if (product) parts.push(`Commercial photography of ${product}`);
+                        parts.push(subject);
+                        if (business) parts.push(`for ${business} brand`);
+                        parts.push(style);
+                        if (color) parts.push(`color palette: ${color}`);
+                        parts.push(lighting);
+                        parts.push(camera);
+                        finalPrompt = parts.filter(Boolean).join(", ");
+                        
+                        if (ai === 'Midjourney') finalPrompt += ` --ar ${ratio} --style raw --v 6.0`;
+                        
+                    } else if (ai === 'FLUX' || ai === 'ChatGPT' || ai === 'Gemini') {
+                        // Natural language / Conversational based
+                        finalPrompt = `Create a highly detailed professional image of ${product ? product : 'the subject'}. ${subject}. `;
+                        if (business || goal) finalPrompt += `This image is intended as a ${goal} for a ${business ? business : 'business'}. `;
+                        if (target) finalPrompt += `The visual should appeal to ${target}. `;
+                        finalPrompt += `The artistic style is ${style}, featuring ${lighting} lighting. `;
+                        if (color) finalPrompt += `The dominant color palette is ${color}. `;
+                        finalPrompt += `The perspective is captured using ${camera}. `;
+                        if (ai !== 'FLUX') finalPrompt += `Generate it in ${ratio} aspect ratio.`;
+                    } else {
+                        // Standard fallback
+                        finalPrompt = `${product}, ${subject}, ${style}, ${lighting}, ${camera}, aspect ratio ${ratio}`;
+                    }
+                    
+                } else if (type === 'video') {
+                    const subject = document.getElementById('vid_subject').value.trim();
+                    if(!subject) return Utils.showToast("Subjek aksi wajib diisi!", true);
+                    ai = document.getElementById('vid_ai').value;
+                    finalPrompt = `${subject}, ${document.getElementById('vid_camera').value}, ${document.getElementById('vid_style').value}. High quality, 4k.`;
+                } else if (type === 'music') {
+                    const theme = document.getElementById('mus_theme').value.trim();
+                    if(!theme) return Utils.showToast("Tema lirik wajib diisi!", true);
+                    ai = document.getElementById('mus_ai').value;
+                    const genre = document.getElementById('mus_genre').value || 'Pop';
+                    finalPrompt = `A ${genre} song about ${theme}. ${document.getElementById('mus_tempo').value}, featuring ${document.getElementById('mus_vocal').value}.`;
+                } else if (type === 'code') {
+                    const task = document.getElementById('cod_task').value.trim();
+                    if(!task) return Utils.showToast("Tugas wajib diisi!", true);
+                    ai = document.getElementById('cod_ai').value;
+                    const stack = document.getElementById('cod_stack').value || 'HTML/CSS/JS';
+                    finalPrompt = `You are a Senior Software Engineer. Tech stack: ${stack}.\n\nTask: ${task}\n\nProvide production-ready, clean, and well-commented code. Do not use placeholders.`;
+                } else if (type === 'chat') {
+                    const task = document.getElementById('chat_task').value.trim();
+                    if(!task) return Utils.showToast("Tugas wajib diisi!", true);
+                    ai = document.getElementById('chat_ai').value;
+                    const role = document.getElementById('chat_role').value || 'AI Assistant';
+                    const format = document.getElementById('chat_format').value || 'Clear and concise';
+                    finalPrompt = `Act as a ${role}.\n\nTask: ${task}\n\nFormat/Constraints: ${format}`;
+                }
+
+                KYA.currentPrompt = finalPrompt;
+                KYA.currentAiType = ai;
+                KYA.currentCategory = type.charAt(0).toUpperCase() + type.slice(1);
+                
+                Storage.saveHistory(finalPrompt, KYA.currentCategory, ai);
+                UI.openModal(finalPrompt, ai);
+            }
+        };
+
+        // --- MODULE: UI & DOM ---
+        const UI = {
+            switchTab: (tabId) => {
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('tab-active', 'text-kya-neon');
+                    btn.classList.add('text-gray-400');
+                    btn.style.borderBottom = 'none';
+                });
+                
+                const activeBtn = document.querySelector(`button[data-tab="${tabId}"]`);
+                if(activeBtn) {
+                    activeBtn.classList.remove('text-gray-400');
+                    activeBtn.classList.add('tab-active', 'text-kya-neon');
+                    activeBtn.style.borderBottom = '2px solid #00FF66';
+                    // Scroll nav to active button
+                    activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+
+                document.querySelectorAll('.section-content').forEach(sec => sec.classList.remove('active'));
+                const targetSec = document.getElementById(`sec-${tabId}`);
+                if(targetSec) targetSec.classList.add('active');
+
+                if(tabId === 'history') UI.renderHistory();
+                if(tabId === 'favorites') UI.renderFavorites();
+            },
+            
+            // Image Wizard Logic
+            nextWizard: (step) => {
+                document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
+                document.getElementById(`w-step-${step}`).classList.add('active');
+                document.getElementById('wizard-counter').innerText = `Step ${step} of 4`;
+            },
+            prevWizard: (step) => {
+                document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
+                document.getElementById(`w-step-${step}`).classList.add('active');
+                document.getElementById('wizard-counter').innerText = `Step ${step} of 4`;
+            },
+
+            openModal: (promptText, aiType) => {
+                document.getElementById('generatedPrompt').value = promptText;
+                document.getElementById('res_ai_tag').innerText = aiType;
+                
+                const btnFav = document.getElementById('btnFav');
+                btnFav.innerHTML = '<i class="ph ph-star text-lg"></i> Simpan';
+                btnFav.classList.remove('border-yellow-400');
+                
+                document.getElementById('resultModal').classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            },
+            closeModal: () => {
+                document.getElementById('resultModal').classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            },
+
+            renderHistory: () => {
+                const container = document.getElementById('history-container');
+                const history = Storage.get('kya_history');
+                if (history.length === 0) return container.innerHTML = '<p class="text-gray-500 text-center py-5 text-sm">Belum ada riwayat.</p>';
+
+                container.innerHTML = history.map(item => `
+                    <div class="bg-kya-card p-4 rounded-xl border border-kya-border hover:border-kya-neon transition-colors cursor-pointer" onclick="UI.loadFromStorage('${encodeURIComponent(item.prompt)}', '${item.ai}', '${item.category}')">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs bg-gray-800 px-2 py-1 rounded text-gray-300">${item.category} | ${item.ai}</span>
+                            <span class="text-[10px] text-gray-500">${item.date}</span>
+                        </div>
+                        <p class="text-sm text-gray-300 line-clamp-2 leading-relaxed">${item.prompt}</p>
+                    </div>
+                `).join('');
+            },
+
+            renderFavorites: () => {
+                const container = document.getElementById('favorites-container');
+                const favs = Storage.get('kya_favorites');
+                if (favs.length === 0) return container.innerHTML = '<p class="text-gray-500 text-center py-5 text-sm">Belum ada favorit.</p>';
+
+                container.innerHTML = favs.map(item => `
+                    <div class="bg-kya-card p-4 rounded-xl border border-kya-border relative group">
+                        <div class="cursor-pointer pr-8" onclick="UI.loadFromStorage('${encodeURIComponent(item.prompt)}', '${item.ai}', '${item.category}')">
+                            <span class="text-xs border border-kya-neon text-kya-neon px-2 py-1 rounded mb-2 inline-block">${item.ai}</span>
+                            <p class="text-sm text-gray-300 line-clamp-3 leading-relaxed">${item.prompt}</p>
+                        </div>
+                        <button onclick="Storage.removeFavorite('${item.id}')" class="absolute top-3 right-3 p-2 rounded-lg bg-gray-800 text-red-400 hover:bg-red-900/30">
+                            <i class="ph ph-trash text-lg"></i>
+                        </button>
+                    </div>
+                `).join('');
+            },
+
+            loadFromStorage: (encPrompt, ai, cat) => {
+                KYA.currentPrompt = decodeURIComponent(encPrompt);
+                KYA.currentAiType = ai;
+                KYA.currentCategory = cat;
+                UI.openModal(KYA.currentPrompt, ai);
+            },
+
+            renderLibrary: () => {
+                const container = document.getElementById('library-grid');
+                container.innerHTML = KYA.library.map(lib => `
+                    <div class="bg-kya-card p-4 rounded-xl border border-kya-border hover:border-kya-neon transition cursor-pointer text-center" onclick="UI.useLibraryTemplate('${lib.id}')">
+                        <i class="ph ${lib.icon} text-3xl text-kya-neon mb-2"></i>
+                        <h4 class="text-sm font-bold">${lib.title}</h4>
+                        <p class="text-[10px] text-gray-500 mt-1">${lib.desc}</p>
+                    </div>
+                `).join('');
+            },
+
+            useLibraryTemplate: (id) => {
+                const lib = KYA.library.find(l => l.id === id);
+                if(lib.type === 'image') {
+                    UI.switchTab('image');
+                    // Reset wizard to step 1
+                    UI.nextWizard(1);
+                    document.getElementById('img_business').value = lib.title + " Business";
+                    document.getElementById('img_goal').value = "product catalog";
+                    document.getElementById('img_subject').focus();
+                    Utils.showToast(`Template ${lib.title} dimuat. Lanjutkan isi subjek.`);
+                }
+            },
+
+            searchPrompts: () => {
+                const query = document.getElementById('searchInput').value.toLowerCase();
+                const container = document.getElementById('search-results');
+                
+                if(!query) {
+                    container.innerHTML = '<p class="text-gray-500 text-sm text-center py-5">Hasil pencarian akan muncul di sini.</p>';
+                    return;
+                }
+
+                const history = Storage.get('kya_history');
+                const favs = Storage.get('kya_favorites');
+                const combined = [...favs, ...history];
+                
+                // Deduplicate by prompt
+                const unique = Array.from(new Set(combined.map(a => a.prompt)))
+                    .map(prompt => combined.find(a => a.prompt === prompt));
+
+                const results = unique.filter(item => 
+                    item.prompt.toLowerCase().includes(query) || 
+                    item.ai.toLowerCase().includes(query) || 
+                    item.category.toLowerCase().includes(query)
+                );
+
+                if(results.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-sm text-center py-5">Tidak ditemukan.</p>';
+                    return;
+                }
+
+                container.innerHTML = results.map(item => `
+                    <div class="bg-kya-card p-3 rounded-xl border border-kya-border cursor-pointer" onclick="UI.loadFromStorage('${encodeURIComponent(item.prompt)}', '${item.ai}', '${item.category}')">
+                        <span class="text-[10px] bg-gray-800 px-1.5 py-0.5 rounded text-kya-neon">${item.ai}</span>
+                        <p class="text-xs text-gray-300 line-clamp-2 mt-1">${item.prompt}</p>
+                    </div>
+                `).join('');
+            }
+        };
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            UI.renderLibrary();
+        });
+    </script>
+</body>
+</html>

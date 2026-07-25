@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://vixionkedung-eng.github.io/kya-prompt-builder/sitemap.xml
